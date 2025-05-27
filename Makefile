@@ -3,20 +3,24 @@ CC = gcc
 CFLAGS = -g -Wall
 
 # Archivos fuente y objeto
-SRC = src/init.c
-OBJ = init.o
-EXEC = init
+INIT = src/init.c
+endProcess = src/endProcess.c
+OBJ = init.o endProcess.o
 
 # Regla por defecto
-all: $(EXEC)
+all: init endProcess
 
 # Compilación
-$(EXEC): $(SRC) include/global.h include/share_memory.h
-	$(CC) $(CFLAGS) $(SRC) -o $(EXEC)
+init: $(SRC) include/global.h include/share_memory.h
+	$(CC) $(CFLAGS) $(INIT) -o init
 
+
+endProcess:include/global.h include/share_memory.h
+	$(CC) $(CFLAGS) $(endProcess) -o endProcess
 # Limpieza de ejecutables y objetos
 clean:
-	rm -f $(EXEC) $(OBJ)
+
+	rm -f $(EXEC) $(endProcess)   $(OBJ)
 
 # Alias para limpieza rápida del ejecutable
 delete: clean
