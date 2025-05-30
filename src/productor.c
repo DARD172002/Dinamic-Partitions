@@ -7,11 +7,12 @@
 #include <semaphore.h>
 #include <fcntl.h>
 #include <time.h>
-
+#include<stdbool.h>
 #include "../include/share_memory.h"
 #include "../include/global.h"
 
 #define MAX_LINEAS_POR_HILO 10
+int algoritmo = 0; // 1 = FIFO, 2 = Worst Fit, 3 = Best Fit
 
 sem_t *mem_sem;
 Shared_memory *memory;
@@ -29,7 +30,7 @@ const char *colores[] = {
     RED, GREEN, YELLOW, BLUE, MAGENTA, CYAN,
     "\033[91m", "\033[92m", "\033[93m", "\033[94m",
     "\033[95m", "\033[96m", "\033[97m"
-};  // Hasta 13 colores, puedes duplicar si necesitas más
+};  
 
 void mostrar_memoria() {
     char memoria[memory->size];
@@ -37,7 +38,7 @@ void mostrar_memoria() {
         memoria[i] = '-';
     }
 
-    // Asignar símbolo único a cada proceso
+    // Símbolos únicos
     char simbolos[100];
     for (int i = 0; i < 100; i++) {
         if (i < 26)
@@ -48,23 +49,27 @@ void mostrar_memoria() {
             simbolos[i] = '*';
     }
 
-    // Asignar a la memoria
+    // Asignar símbolos a bloques
     for (int i = 0; i < 100; i++) {
-        if (memory->process[i].pid != -1) {
-            for (int j = memory->process[i].init; j < memory->process[i].init + memory->process[i].size; j++) {
+        if (memory->process[i].pid != -1 &&
+            memory->process[i].init >= 0 &&
+            memory->process[i].init + memory->process[i].size <= memory->size) {
+
+            for (int j = memory->process[i].init;
+                 j < memory->process[i].init + memory->process[i].size && j < memory->size;
+                 j++) {
                 memoria[j] = simbolos[i];
             }
         }
     }
 
-    // Imprimir memoria con colores
+    // Imprimir memoria
     printf("\n== ESTADO DE LA MEMORIA (%d libres) ==\n[", memory->free);
     for (int i = 0; i < memory->size; i++) {
         char actual = memoria[i];
         if (actual == '-') {
-            printf("%c", actual);  // Libre: sin color
+            printf("%c", actual);
         } else {
-            // Buscar qué proceso lo usa y colorear
             for (int j = 0; j < 100; j++) {
                 if (memory->process[j].pid != -1 && simbolos[j] == actual) {
                     const char *color = colores[j % (sizeof(colores) / sizeof(char *))];
@@ -79,7 +84,10 @@ void mostrar_memoria() {
     // Leyenda
     printf("Leyenda:\n");
     for (int i = 0; i < 100; i++) {
-        if (memory->process[i].pid != -1) {
+        if (memory->process[i].pid != -1 &&
+            memory->process[i].init >= 0 &&
+            memory->process[i].init + memory->process[i].size <= memory->size) {
+
             const char *color = colores[i % (sizeof(colores) / sizeof(char *))];
             printf("  %s%c%s = PID %d (%d líneas desde %d)\n",
                    color, simbolos[i], RESET,
@@ -90,11 +98,115 @@ void mostrar_memoria() {
     }
     printf("====================================\n\n");
 }
+//crea un mapa que facilita la busqueda de bloques libres
+void marcar_ocupadas(int *ocupado, int size) {
+    for (int i = 0; i < size; i++) {
+        ocupado[i] = 0;
+    }
+
+    // Marcar posiciones ocupadas en memoria
+    for (int i = 0; i < 100; i++) {
+        if (memory->process[i].pid != -1) {
+            int inicio = memory->process[i].init;
+            int fin = inicio + memory->process[i].size;
+            if (inicio >= 0 && fin <= size) {
+                for (int j = inicio; j < fin; j++) {
+                    ocupado[j] = 1;
+                }
+            }
+        }
+    }
+}
+
+int best_fit(int requerido) {
+    int ocupado[memory->size];
+    marcar_ocupadas(ocupado, memory->size);
+
+    int inicio = -1;
+    int mejor_tam = memory->size + 1;  
+
+    int i = 0;
+    while (i < memory->size) {
+        if (ocupado[i]) {
+            i++;
+            continue;
+        }
+
+        int inicio_bloque = i;
+        int tam_bloque = 0;
+        while (i < memory->size && !ocupado[i]) {
+            tam_bloque++;
+            i++;
+        }
+
+        if (tam_bloque >= requerido && tam_bloque < mejor_tam) {
+            mejor_tam = tam_bloque;
+            inicio = inicio_bloque;
+        }
+    }
+
+    return inicio;
+}
+
+
+int worst_fit(int requerido) {
+    int ocupado[memory->size];
+    marcar_ocupadas(ocupado, memory->size);
+
+    int inicio = -1;
+    int mejor_tam = 0;
+
+    int i = 0;
+    while (i < memory->size) {
+        // Saltar posiciones ocupadas
+        if (ocupado[i]) {
+            i++;
+            continue;
+        }
+
+        // Encontrar el tamaño del bloque libre comenzando en i
+        int inicio_bloque = i;
+        int tam_bloque = 0;
+        while (i < memory->size && !ocupado[i]) {
+            tam_bloque++;
+            i++;
+        }
+
+        // Se queda con el mejor bloque
+        if (tam_bloque >= requerido && tam_bloque > mejor_tam) {
+            mejor_tam = tam_bloque;
+            inicio = inicio_bloque;
+        }
+    }
+
+    return inicio; 
+}
+
+
+int fifo(int requerido) {
+    int ocupado[memory->size];
+    marcar_ocupadas(ocupado, memory->size);
+    // Encuentra el primer bloque libre
+    for (int i = 0; i <= memory->size - requerido; i++) {
+        int libre = 1;
+        for (int j = 0; j < requerido; j++) {
+            if (ocupado[i + j]) {
+                libre = 0; 
+                break;
+            }
+        }
+        if (libre) return i; //retorna la posicion del bloque 
+    }
+
+    return -1;  // No hay espacio
+}
 
 
 void *hilo_funcion(void *arg) {
     int id = *(int *)arg;
     int lines = (rand() % MAX_LINEAS_POR_HILO) + 1;
+    int duracion = (rand() % 41) + 20;//20 a 60
+    //int duracion = (rand() % 16) + 5;  // entre 5 y 20 segundos
 
     sem_wait(mem_sem);
     if (memory->free < lines) {
@@ -104,25 +216,18 @@ void *hilo_funcion(void *arg) {
         return NULL;
     }
 
-    // Buscar bloque contiguo
     int inicio = -1;
-    for (int i = 0; i <= memory->size - lines; i++) {
-        int libre = 1;
-        for (int j = 0; j < 100; j++) {
-            if (memory->process[j].pid != -1 &&
-                i >= memory->process[j].init &&
-                i < (memory->process[j].init + memory->process[j].size)) {
-                libre = 0;
-                break;
-            }
-        }
-        if (libre) {
-            inicio = i;
-            break;
-        }
+    
+    if (algoritmo == 1) {
+        inicio = fifo(lines);
+    } else if (algoritmo == 2) {
+        inicio = worst_fit(lines);
+    } else if (algoritmo == 3) {
+        inicio = best_fit(lines);
     }
 
-    if (inicio == -1) {
+
+    if (inicio == -1 || inicio + lines > memory->size) {
         printf("Hilo %d: No se encontró espacio contiguo de %d líneas.\n", id, lines);
         sem_post(mem_sem);
         free(arg);
@@ -135,7 +240,7 @@ void *hilo_funcion(void *arg) {
             memory->process[i].pid = id;
             memory->process[i].init = inicio;
             memory->process[i].size = lines;
-            memory->process[i].time = 0;
+            memory->process[i].time = duracion;
             memory->number_of_proccess++;
             memory->free -= lines;
             printf("Hilo %d: Reservó %d líneas desde %d.\n", id, lines, inicio);
@@ -143,12 +248,9 @@ void *hilo_funcion(void *arg) {
         }
     }
 
-    
-    sem_post(mem_sem);
-
-    // tiempo aleatorio del sleep
-    int duracion = (rand() % 16) + 5;
     mostrar_memoria();
+    sem_post(mem_sem);  // Mover antes del sleep
+
     sleep(duracion);
 
     // Liberar memoria
@@ -166,9 +268,9 @@ void *hilo_funcion(void *arg) {
             break;
         }
     }
-    
-    sem_post(mem_sem);
     mostrar_memoria();
+    sem_post(mem_sem);
+
     free(arg);
     return NULL;
 }
@@ -194,9 +296,27 @@ int main() {
         perror("sem_open");
         exit(EXIT_FAILURE);
     }
+    bool elegir = true;
+    while (elegir){
+        printf("Seleccione el algoritmo de asignación de memoria:\n");
+        printf("1. FIFO\n");
+        printf("2. Worst Fit\n");
+        printf("3. Best Fit\n");
+        printf("Ingrese la opción deseada: ");
+        scanf("%d", &algoritmo);
+
+        
+        if (algoritmo < 1 || algoritmo > 3) {
+            printf("Opción inválida.\n");
+            exit(EXIT_FAILURE);
+        } else{
+            elegir = false;
+        }
+    }
 
     int contador_id = 1;
     while (1) {
+        int esperar = (rand() % 31) + 30;
         int *id = malloc(sizeof(int));
         *id = contador_id++;
         pthread_t hilo;
@@ -207,7 +327,7 @@ int main() {
             pthread_detach(hilo); 
         }
 
-        sleep(5);  // tiempo de espera para crear hilos, en la version final cambia
+        sleep(esperar);  // tiempo de espera para crear hilos, en la version final cambia
     }
 
     shmdt(memory);
