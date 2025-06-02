@@ -12,6 +12,21 @@
 
 sem_t *mem_sem;
 
+#define RESET   "\033[0m"
+#define RED     "\033[31m"
+#define GREEN   "\033[32m"
+#define YELLOW  "\033[33m"
+#define BLUE    "\033[34m"
+#define MAGENTA "\033[35m"
+#define CYAN    "\033[36m"
+#define WHITE   "\033[37m"
+
+const char *colores[] = {
+    RED, GREEN, YELLOW, BLUE, MAGENTA, CYAN,
+    "\033[91m", "\033[92m", "\033[93m", "\033[94m",
+    "\033[95m", "\033[96m", "\033[97m"
+};
+
 int main() {
     int shmid = shmget(SHM_KEY, sizeof(Shared_memory), 0666);
     if (shmid == -1) {
@@ -34,6 +49,12 @@ int main() {
     sem_wait(mem_sem);
 
     printf("\n===== ESTADO DE LA MEMORIA =====\n");
+    
+    char memoria[memory->size];
+    for (int i = 0; i < memory->size; i++) {
+        memoria[i] = '-';
+    }
+    
     char simbolos[100];
     for (int i = 0; i < 100; i++) {
         if (i < 26)
@@ -44,33 +65,45 @@ int main() {
             simbolos[i] = '*';
     }
 
-    char memoria[memory->size];
-    for (int i = 0; i < memory->size; i++) memoria[i] = '-';
-
     for (int i = 0; i < 100; i++) {
-        if (memory->process[i].pid != -1) {
+        if (memory->process[i].pid != -1 &&
+            memory->process[i].init >= 0 &&
+            memory->process[i].init + memory->process[i].size <= memory->size) {
+
             for (int j = memory->process[i].init;
-                 j < memory->process[i].init + memory->process[i].size; j++) {
-                if (j >= 0 && j < memory->size)
-                    memoria[j] = simbolos[i];
+                 j < memory->process[i].init + memory->process[i].size && j < memory->size;
+                 j++) {
+                memoria[j] = simbolos[i];
             }
         }
     }
-
+    
     printf("[");
     for (int i = 0; i < memory->size; i++) {
-        printf("%c", memoria[i]);
+        char actual = memoria[i];
+        if (actual == '-') {
+            printf("%c", actual);
+        } else {
+            for (int j = 0; j < 100; j++) {
+                if (memory->process[j].pid != -1 && simbolos[j] == actual) {
+                    const char *color = colores[j % (sizeof(colores) / sizeof(char *))];
+                    printf("%s%c%s", color, actual, RESET);
+                    break;
+                }
+            }
+        }
     }
     printf("]\n");
 
     printf("Procesos:\n");
     for (int i = 0; i < 100; i++) {
         if (memory->process[i].pid != -1) {
-            printf("  %c = PID %d (%d líneas desde %d)\n",
+            const char *color = colores[i % (sizeof(colores) / sizeof(char *))];
+            printf("  %s%c%s = PID %d\n",
+                   color,
                    simbolos[i],
-                   memory->process[i].pid,
-                   memory->process[i].size,
-                   memory->process[i].init);
+                   RESET,
+                   memory->process[i].pid);
         }
     }
 
