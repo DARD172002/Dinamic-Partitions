@@ -11,11 +11,11 @@ OBJ = init.o endProcess.o
 all: init endProcess
 
 # Compilación
-init: $(SRC) include/global.h include/share_memory.h
+init: $(SRC) include/global.h include/share_memory.h $(INIT)
 	$(CC) $(CFLAGS) $(INIT) -o init
 
 
-endProcess:include/global.h include/share_memory.h
+endProcess:include/global.h include/share_memory.h $(endProcess)
 	$(CC) $(CFLAGS) $(endProcess) -o endProcess
 # Limpieza de ejecutables y objetos
 clean:

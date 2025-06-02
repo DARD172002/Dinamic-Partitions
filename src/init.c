@@ -47,16 +47,16 @@ int main() {
 
     // Create semaphores
     sem_t *mem_sem = sem_open(SHARED_MEMORY, O_CREAT, 0666, 1);
-    sem_t *mem_bit = sem_open(BITACORA, O_CREAT, 0666, 1);
+    //sem_t *mem_bit = sem_open(BITACORA, O_CREAT, 0666, 1);
     if (mem_sem == SEM_FAILED) {
     perror("sem_open mem_sem");
     exit(EXIT_FAILURE);
 }
 
-if (mem_bit == SEM_FAILED) {
+/*if (mem_bit == SEM_FAILED) {
     perror("sem_open mem_bit");
     exit(EXIT_FAILURE);
-}
+}*/
     // Create bitacora file
     FILE *bitacora = fopen(BITACORA_FILE, "w");
     if (!bitacora) {

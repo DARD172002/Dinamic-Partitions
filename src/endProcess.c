@@ -32,11 +32,11 @@ int main() {
         printf("Semáforo SHARED_MEMORY eliminado.\n");
     }
 
-    if (sem_unlink(BITACORA) == -1) {
+    /*if (sem_unlink(BITACORA) == -1) {
         perror("sem_unlink BITACORA");
     } else {
         printf("Semáforo BITACORA eliminado.\n");
-    }
+    }*/
     //write in the bitacore the simulation has finished
     sem_t *mem_bit = sem_open(BITACORA, O_CREAT, 0666, 1); // por si ya se eliminó
     if (mem_bit != SEM_FAILED) {
