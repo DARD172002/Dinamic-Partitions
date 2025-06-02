@@ -10,6 +10,7 @@
 #include<stdbool.h>
 #include "../include/share_memory.h"
 #include "../include/global.h"
+#include <time.h>
 
 #define MAX_LINEAS_POR_HILO 10
 int algoritmo = 0; // 1 = FIFO, 2 = Worst Fit, 3 = Best Fit
@@ -31,6 +32,18 @@ const char *colores[] = {
     "\033[91m", "\033[92m", "\033[93m", "\033[94m",
     "\033[95m", "\033[96m", "\033[97m"
 };  
+char *obtener_hora_actual() {
+    static char buffer[9];
+    time_t rawtime;
+    struct tm *timeinfo;
+
+    time(&rawtime);
+    timeinfo = localtime(&rawtime);
+
+    strftime(buffer, sizeof(buffer), "%H:%M:%S", timeinfo);
+    return buffer;
+}
+
 
 void mostrar_memoria() {
     char memoria[memory->size];
@@ -209,8 +222,15 @@ void *hilo_funcion(void *arg) {
     //int duracion = (rand() % 16) + 5;  // entre 5 y 20 segundos
 
     sem_wait(mem_sem);
+    FILE *bitacora = fopen(BITACORA_FILE, "a");
     if (memory->free < lines) {
-        printf("Hilo %d: No hay suficiente memoria (necesita %d líneas).\n", id, lines);
+        printf("Hilo %d: Fallo - Fragmentación, no hay bloque contiguo de %d líneas.\n", id, lines);
+
+        if (bitacora) {
+            fprintf(bitacora, "[%s] PID %d - FALLO: Memoria insuficiente (necesita %d líneas, libres %d)\n",
+                    obtener_hora_actual(), id, lines, memory->free);
+            fclose(bitacora);
+        }
         sem_post(mem_sem);
         free(arg);
         return NULL;
@@ -229,12 +249,18 @@ void *hilo_funcion(void *arg) {
 
     if (inicio == -1 || inicio + lines > memory->size) {
         printf("Hilo %d: No se encontró espacio contiguo de %d líneas.\n", id, lines);
+        if (bitacora) {
+            fprintf(bitacora, "[%s] PID %d - FALLO: Fragmentación, sin bloque contiguo para %d líneas\n",
+                    obtener_hora_actual(), id, lines);
+            fclose(bitacora);
+        }
         sem_post(mem_sem);
         free(arg);
         return NULL;
     }
 
     // Registrar proceso
+    
     for (int i = 0; i < 100; i++) {
         if (memory->process[i].pid == -1) {
             memory->process[i].pid = id;
@@ -244,27 +270,43 @@ void *hilo_funcion(void *arg) {
             memory->number_of_proccess++;
             memory->free -= lines;
             printf("Hilo %d: Reservó %d líneas desde %d.\n", id, lines, inicio);
+            if (bitacora) {
+                fprintf(bitacora, "[%s] PID %d - ASIGNACIÓN: %d líneas desde %d, va a esperar %ds\n",
+                        obtener_hora_actual(), id, lines, inicio, duracion);
+                fclose(bitacora);
+            }
             break;
         }
     }
 
     mostrar_memoria();
-    sem_post(mem_sem);  // Mover antes del sleep
+    sem_post(mem_sem);  
 
     sleep(duracion);
 
     // Liberar memoria
     sem_wait(mem_sem);
+    int auxId = -1;
+    int auxSize = 0;
     for (int i = 0; i < 100; i++) {
         if (memory->process[i].pid == id) {
             printf("Hilo %d: Liberando %d líneas desde %d.\n", id,
                    memory->process[i].size, memory->process[i].init);
+            auxId = memory->process[i].init;
+            auxSize = memory->process[i].size;
             memory->free += memory->process[i].size;
             memory->process[i].pid = -1;
             memory->process[i].init = -1;
             memory->process[i].size = 0;
             memory->process[i].time = 0;
             memory->number_of_proccess--;
+            bitacora = fopen(BITACORA_FILE, "a");
+            if (bitacora) {
+                fprintf(bitacora, "[%s] PID %d - DESASIGNACIÓN de %d líneas desde %d\n",
+                        obtener_hora_actual(), id,
+                        auxSize, auxId);
+                fclose(bitacora);
+            }
             break;
         }
     }
@@ -313,7 +355,12 @@ int main() {
             elegir = false;
         }
     }
-
+    FILE *bitacora = fopen(BITACORA_FILE, "a");
+    if (bitacora) {
+        fprintf(bitacora, "[%s] Algoritmo seleccionado: %s\n", obtener_hora_actual(),
+                algoritmo == 1 ? "FIFO" : algoritmo == 2 ? "Worst Fit" : "Best Fit");
+        fclose(bitacora);
+    }
     int contador_id = 1;
     while (1) {
         int esperar = (rand() % 31) + 30;
@@ -328,6 +375,7 @@ int main() {
         }
 
         sleep(esperar);  // tiempo de espera para crear hilos, en la version final cambia
+        
     }
 
     shmdt(memory);
