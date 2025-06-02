@@ -13,7 +13,7 @@
 #include <time.h>
 
 #define MAX_LINEAS_POR_HILO 10
-int algoritmo = 0; // 1 = FIFO, 2 = Worst Fit, 3 = Best Fit
+int algoritmo = 0; // 1 = First in, 2 = Worst Fit, 3 = Best Fit
 
 sem_t *mem_sem;
 Shared_memory *memory;
@@ -195,7 +195,7 @@ int worst_fit(int requerido) {
     return inicio; 
 }
 
-
+//first in
 int fifo(int requerido) {
     int ocupado[memory->size];
     marcar_ocupadas(ocupado, memory->size);
@@ -341,7 +341,7 @@ int main() {
     bool elegir = true;
     while (elegir){
         printf("Seleccione el algoritmo de asignación de memoria:\n");
-        printf("1. FIFO\n");
+        printf("1. First in\n");
         printf("2. Worst Fit\n");
         printf("3. Best Fit\n");
         printf("Ingrese la opción deseada: ");
@@ -358,7 +358,7 @@ int main() {
     FILE *bitacora = fopen(BITACORA_FILE, "a");
     if (bitacora) {
         fprintf(bitacora, "[%s] Algoritmo seleccionado: %s\n", obtener_hora_actual(),
-                algoritmo == 1 ? "FIFO" : algoritmo == 2 ? "Worst Fit" : "Best Fit");
+                algoritmo == 1 ? "First in" : algoritmo == 2 ? "Worst Fit" : "Best Fit");
         fclose(bitacora);
     }
     int contador_id = 1;
