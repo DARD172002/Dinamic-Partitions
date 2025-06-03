@@ -5,16 +5,17 @@ CFLAGS = -g -Wall
 # Archivos fuente y objeto
 INIT = src/init.c
 endProcess = src/endProcess.c
+PRODUCTOR = src/productor.c
 OBJ = init.o endProcess.o
 
 # Regla por defecto
-all: init endProcess
+all: init endProcess productor
 
 # Compilación
 init: $(SRC) include/global.h include/share_memory.h $(INIT)
 	$(CC) $(CFLAGS) $(INIT) -o init
-
-
+productor: $(SRC) include/global.h include/share_memory.h $(PRODUCTOR)
+	$(CC) $(CFLAGS) $(PRODUCTOR) -o productor
 endProcess:include/global.h include/share_memory.h $(endProcess)
 	$(CC) $(CFLAGS) $(endProcess) -o endProcess
 # Limpieza de ejecutables y objetos

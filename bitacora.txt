@@ -1,2 +1,8 @@
-SIMULACIÓN INICIADA - Memoria: 20 líneas
+SIMULACIÓN INICIADA - Memoria: 40 líneas
+Fecha/Hora: 2025-06-02 20:25:03
+================================
+
+[2025-06-02 20:25:03] PID 62412: Inicialización (sistema) - Líneas: 40
+[20:25:09] Algoritmo seleccionado: Best Fit
+[20:25:09] PID 1 - ASIGNACIÓN: 9 líneas desde 0, va a esperar 22s
 SIMULACIÓN FINALIZADA.

@@ -7,9 +7,55 @@
 #include <unistd.h>
 #include "../include/share_memory.h"
 #include "../include/global.h"
+#define PRODUCTOR_EXE "productor"
+#define ESPIA_EXE "espia"
+#define INIT "init"
+/*
+void kill_processes() {
+    printf("Terminando procesos activos...\n");
+    
+    // Comando de terminación mejorado
+    int ret1 = system("pkill -f " PRODUCTOR_EXE " 2>/dev/null");
+    if (WEXITSTATUS(ret1) == 0) {
+        printf("Procesos productores terminados.\n");
+    } else if (WEXITSTATUS(ret1) == 1) {
+        printf("No se encontraron productores activos.\n");
+    } else {
+        printf("Error desconocido al terminar productores (Código %d)\n", WEXITSTATUS(ret1));
+    }
 
+    int ret2 = system("pkill -f " ESPIA_EXE " 2>/dev/null");
+    if (WEXITSTATUS(ret2) == 0) {
+        printf("Procesos espía terminados.\n");
+    } else if (WEXITSTATUS(ret2) == 1) {
+        printf("No se encontraron espías activos.\n");
+    } else {
+        printf("Error desconocido al terminar espías (Código %d)\n", WEXITSTATUS(ret2));
+    }
+}
+*/
+
+void kill_processes() {
+    printf("Terminando procesos activos...\n");
+    
+    int ret1 = system("pkill -f " PRODUCTOR_EXE " 2>/dev/null");
+    switch(WEXITSTATUS(ret1)) {
+        case 0: printf("Productores terminados correctamente\n"); break;
+        case 1: printf("No había productores activos\n"); break;
+        default: printf("Error inesperado al terminar productores (%d)\n", WEXITSTATUS(ret1));
+    }
+
+    int ret2 = system("pkill -f " ESPIA_EXE " 2>/dev/null");
+    switch(WEXITSTATUS(ret2)) {
+        case 0: printf("Espías terminados correctamente\n"); break;
+        case 1: printf("No había espías activos\n"); break;
+        default: printf("Error inesperado al terminar espías (%d)\n", WEXITSTATUS(ret2));
+    }
+}
 int main() {
     //get ID of segment of shared memory
+
+    kill_processes();
     
     int shmid = shmget(SHM_KEY, sizeof(Shared_memory), 0666);
     if (shmid == -1) {

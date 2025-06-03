@@ -8,6 +8,26 @@
 #include "../include/share_memory.h"
 #include <unistd.h>
 #include "../include/global.h"
+#include <time.h>
+
+// Función para registrar en la bitácora (usa el mismo semáforo)
+void log_action(sem_t *mem_sem, const char* action, int pid, const char* type, int lines) {
+    FILE *bitacora = fopen(BITACORA_FILE, "a");
+    if (!bitacora) {
+        perror("fopen");
+        return;
+    }
+    
+    time_t now = time(NULL);
+    char time_str[20];
+    strftime(time_str, sizeof(time_str), "%Y-%m-%d %H:%M:%S", localtime(&now));
+    
+    fprintf(bitacora, "[%s] PID %d: %s (%s) - Líneas: %d\n", 
+            time_str, pid, action, type, lines);
+    
+    fclose(bitacora);
+}
+
 
 int main() {
     int size_of_memory;
@@ -58,14 +78,25 @@ int main() {
     exit(EXIT_FAILURE);
 }*/
     // Create bitacora file
+        // Inicializar bitácora (usando el semáforo)
+    sem_wait(mem_sem);
     FILE *bitacora = fopen(BITACORA_FILE, "w");
     if (!bitacora) {
         perror("fopen");
         exit(EXIT_FAILURE);
     }
-
+    //register of begin simulation
+    time_t now = time(NULL);
+    char time_str[20];
+    strftime(time_str, sizeof(time_str), "%Y-%m-%d %H:%M:%S", localtime(&now));
     fprintf(bitacora, "SIMULACIÓN INICIADA - Memoria: %d líneas\n", size_of_memory);
+    fprintf(bitacora, "Fecha/Hora: %s\n", time_str);
+    fprintf(bitacora, "================================\n\n");
     fclose(bitacora);
+    // Registrar acción en bitácora
+    // Registrar acción inicial
+    log_action(mem_sem, "Inicialización", getpid(), "sistema", size_of_memory);
+    sem_post(mem_sem);
 
     printf("Ambiente inicializado correctamente.\n");
     printf("Memoria: %d líneas\n", size_of_memory);
