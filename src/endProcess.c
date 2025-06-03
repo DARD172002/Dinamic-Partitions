@@ -8,7 +8,7 @@
 #include "../include/share_memory.h"
 #include "../include/global.h"
 #define PRODUCTOR_EXE "productor"
-#define ESPIA_EXE "espia"
+#define ESPIA_EXE "spy"
 #define INIT "init"
 /*
 void kill_processes() {
