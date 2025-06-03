@@ -279,7 +279,7 @@ void *hilo_funcion(void *arg) {
         }
     }
 
-    mostrar_memoria();
+    //mostrar_memoria();
     sem_post(mem_sem);  
 
     sleep(duracion);
@@ -310,7 +310,7 @@ void *hilo_funcion(void *arg) {
             break;
         }
     }
-    mostrar_memoria();
+    //mostrar_memoria();
     sem_post(mem_sem);
 
     free(arg);
